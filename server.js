@@ -1,14 +1,22 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
-const db = require('./database'); // Đảm bảo file database.js đã có cột Email (V10/V11)
+const db = require('./database');
 const nodemailer = require('nodemailer');
+const path = require('path'); // <--- 1. THÊM DÒNG NÀY
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-app.use(express.static('public'));
 
+// Đảm bảo đường dẫn tĩnh trỏ đúng vào thư mục public
+app.use(express.static(path.join(__dirname, 'public'))); 
+
+// --- 3. THÊM ĐOẠN CODE QUAN TRỌNG NÀY ---
+// Đoạn này giúp sửa lỗi "Cannot GET /"
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 // --- CẤU HÌNH GỬI MAIL ---
 // Để test: Dùng jsonTransport: true (In ra màn hình console)
 // Để chạy thật: Thay bằng service: 'gmail', auth: { user: '...', pass: '...' }
@@ -173,3 +181,4 @@ app.get('/api/questions', (req, res) => { db.all(`SELECT * FROM TIEU_CHI WHERE M
 app.post('/api/sv/submit', (req, res) => { const { masv, malop, madot, answers, ykien } = req.body; db.serialize(() => { db.run(`INSERT INTO PHIEU_KET_QUA (MaLop, MaDot, YKienKhac) VALUES (?, ?, ?)`, [malop, madot, ykien], function() { const mp = this.lastID; const stmt = db.prepare(`INSERT INTO CHI_TIET_KET_QUA (MaPhieu, MaTieuChi, DiemSo) VALUES (?, ?, ?)`); answers.forEach(a => stmt.run(mp, a.maTieuChi, a.diem)); stmt.finalize(); db.run(`UPDATE THEO_DOI_TIEN_DO SET TrangThai='DaLam', ThoiGianHoanThanh=CURRENT_TIMESTAMP WHERE MaSV=? AND MaLop=? AND MaDot=?`, [masv, malop, madot]); res.json({ success: true }); }); }); });
 
 app.listen(PORT, () => { console.log(`Server V11.0 running at http://localhost:${PORT}`); });
+app.listen(PORT, () => { console.log(`Server running at http://localhost:${PORT}`); });
